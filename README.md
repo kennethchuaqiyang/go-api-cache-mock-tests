@@ -1,13 +1,14 @@
 # go-api-cache-mock-tests
 
-Go API automation covering the three cache-mock-api backends:
-[redis-cache-mock-api](https://github.com/kennethchuaqiyang/redis-cache-mock-api), [inmemory-cache-mock-api](https://github.com/kennethchuaqiyang/inmemory-cache-mock-api), and [elk-cache-mock-api](https://github.com/kennethchuaqiyang/elk-cache-mock-api) (local-only).
+Go API automation covering [redis-cache-mock-api](https://github.com/kennethchuaqiyang/redis-cache-mock-api) and [inmemory-cache-mock-api](https://github.com/kennethchuaqiyang/inmemory-cache-mock-api).
 
-**CI:** [Jenkins job](http://localhost:8080/job/go-api-cache-mock-tests/) — Redis and in-memory only, on every SCM poll.
+The equivalent test file for [elk-cache-mock-api](https://github.com/kennethchuaqiyang/elk-cache-mock-api) (`cache_elk_test.go`) is **not** in this repo — it's kept as a standalone backup in [elk-cache-tests-backup](https://github.com/kennethchuaqiyang/elk-cache-tests-backup), since ELK runs locally-only and isn't part of this repo's CI story.
+
+**CI:** [Jenkins job](http://localhost:8080/job/go-api-cache-mock-tests/) — on every SCM poll.
 
 ## Test cases
 
-Both `cache_redis_inmemory_test.go` (Redis + in-memory, table-driven, same file per the original scope) and `cache_elk_test.go` (ELK, separate file, local-only) cover the same three cases:
+`cache_redis_inmemory_test.go` is table-driven across both backends (`redis`, `inmemory`), running the same three cases per environment:
 
 1. **GET, first time / not cached → MISS.** Ends by forcing a genuine update, so the cache is guaranteed empty for whatever runs next — not dependent on the TTL having expired by then.
 2. **GET, second time within TTL → HIT.** Same cleanup at the end.
@@ -27,7 +28,6 @@ Both point at the **same underlying Postgres row** for the test user (they're se
 |---|---|
 | `REDIS_BASE_URL` | `https://redis-cache-mock-api.onrender.com` |
 | `INMEMORY_BASE_URL` | `https://inmemory-cache-mock-api.onrender.com` |
-| `ELK_BASE_URL` | `http://localhost:8082` |
 | `TEST_USER_ID` | `2` |
 
 All optional — override to point at local instances during development.
@@ -36,14 +36,13 @@ All optional — override to point at local instances during development.
 
 ```bash
 go mod tidy
-
-# Redis + in-memory (against live Render deployments by default)
 go test ./... -v -run '^TestCacheBehaviorAcrossBackends$'
-
-# ELK (requires local Elasticsearch + elk-cache-mock-api running)
-go test ./... -v -run '^TestElkCacheBehavior$'
 ```
+
+## Running the ELK tests
+
+Not part of this repo — see [elk-cache-tests-backup](https://github.com/kennethchuaqiyang/elk-cache-tests-backup) for `cache_elk_test.go` and its own run instructions (requires a local Elasticsearch + `elk-cache-mock-api`).
 
 ## CI
 
-The Jenkins pipeline (`golang:1.24` Docker agent) runs only `TestCacheBehaviorAcrossBackends`. The ELK suite is deliberately excluded — it needs a local Elasticsearch stack this Jenkins agent has no access to. Results are published via `gotestsum` → JUnit XML.
+The Jenkins pipeline (`golang:1.24` Docker agent) runs `TestCacheBehaviorAcrossBackends`. Results are published via `gotestsum` → JUnit XML.
